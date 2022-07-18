@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 
 	"github.com/antchfx/xpath"
@@ -96,6 +97,39 @@ func LoadURL(url string) (*html.Node, error) {
 	}
 	defer resp.Body.Close()
 
+	r, err := charset.NewReader(resp.Body, resp.Header.Get("Content-Type"))
+	if err != nil {
+		return nil, err
+	}
+	return html.Parse(r)
+}
+
+func addProxy(tr *http.Transport, proxyUrl string) {
+	if proxyUrl != "" {
+		proxy := func(_ *http.Request) (*url.URL, error) {
+			return url.Parse(proxyUrl)
+		}
+		tr.Proxy = proxy
+	}
+}
+
+func LoadUrlWithProxy(url string, proxy string) (*html.Node, error) {
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.77 Safari/537.36")
+	req.Header.Set("Accept-Language", "zh-CN,zh;q=0.9")
+
+	tr := &http.Transport{}
+	addProxy(tr, proxy)
+	client := &http.Client{Transport: tr}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
 	r, err := charset.NewReader(resp.Body, resp.Header.Get("Content-Type"))
 	if err != nil {
 		return nil, err
